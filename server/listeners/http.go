@@ -257,6 +257,48 @@ func HostEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Write(rawBytes)
 }
 
+func DownloadAgent(w http.ResponseWriter, r *http.Request) {
+	utils.PrintDebug("DownloadAgent called")
+
+	beaconID := strings.TrimPrefix(r.URL.Path, "/agent/download/")
+	if beaconID == "" || beaconID == "/agent/download/" {
+		utils.PrintDebug("Error: beacon ID is empty")
+		http.Error(w, "Beacon ID is required", http.StatusBadRequest)
+		return
+	}
+
+	arch := r.URL.Query().Get("arch")
+	if arch == "" {
+		arch = "64"
+	}
+	if arch != "32" && arch != "64" {
+		http.Error(w, "Invalid arch parameter", http.StatusBadRequest)
+		return
+	}
+
+	session, err := orsteddb.GetSessionById(beaconID)
+	if err != nil || session == nil {
+		utils.PrintDebug("Error: beacon not found in database", err)
+		http.Error(w, "Beacon not found", http.StatusNotFound)
+		return
+	}
+
+	beaconFilename := fmt.Sprintf("beacons/main_http_%s.exe", arch)
+	beaconData, err := os.ReadFile(beaconFilename)
+	if err != nil {
+		utils.PrintDebug("Error reading beacon file:", err.Error())
+		http.Error(w, "Agent not available", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(beaconData)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(beaconData)
+
+	utils.PrintInfo(fmt.Sprintf("Served agent to beacon %s (arch %s), size %d bytes", beaconID, arch, len(beaconData)))
+}
+
 func addHttpHandler(mux *http.ServeMux) error {
 	endpoints := profiles.Config.Endpoints
 	mux.HandleFunc(endpoints["registerBeacon"], RegisterBeacon)
@@ -265,6 +307,7 @@ func addHttpHandler(mux *http.ServeMux) error {
 	mux.HandleFunc(endpoints["socksMessage"], SocksMessage)
 	mux.HandleFunc(endpoints["autorouteMessage"], autoroute.HandleAutorouteWebsocket)
 	mux.HandleFunc(endpoints["hostendpoint"], HostEndpoint)
+	mux.HandleFunc("/agent/download/", DownloadAgent)
 	return nil
 }
 
