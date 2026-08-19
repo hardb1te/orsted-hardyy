@@ -65,6 +65,7 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			f.String("a", "http-proxy-address", "", "URL for example 127.0.0.1:8080")
 			f.String("u", "http-proxy-username", "", "Proxy Username")
 			f.String("p", "http-proxy-password", "", "Proxy Password")
+			f.String("r", "arch", "64", "Target architecture: 32 or 64")
 		},
 		Completer: func(prefix string, args []string) []string {
 			var suggestions []string
@@ -77,6 +78,7 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 				"--http-proxy-password",
 				"--no-console",
 				"--host",
+				"--arch",
 			}
 
 			// complete flags
@@ -165,6 +167,18 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			proxyUsername := c.Flags.String("http-proxy-username")
 			proxyPassword := c.Flags.String("http-proxy-password")
 
+			arch := c.Flags.String("arch")
+			if arch != "32" && arch != "64" {
+				fmt.Println("arch must be 32 or 64")
+				return nil
+			}
+			goarch := "amd64"
+			cc := "x86_64-w64-mingw32-gcc"
+			if arch == "32" {
+				goarch = "386"
+				cc = "i686-w64-mingw32-gcc"
+			}
+
 			ldflags := fmt.Sprintf("-s -w -X main.Targetip=%s -X main.Targetport=%s -X main.HTTPProxyType=%s -X main.HTTPProxyURL=%s -X main.HTTPProxyUsername=%s -X main.HTTPProxyPassword=%s", beaconIP, beaconPort, proxyType, proxyAddress, proxyUsername, proxyPassword)
 
 			if !console && beaconOs == "windows" {
@@ -174,10 +188,16 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			mainPath := fmt.Sprintf("beacon/main_%s.go", beaconType)
 			tags := fmt.Sprintf("-tags=%s", beaconType)
 
+			outName := fmt.Sprintf("main_%s_%s", beaconType, arch)
+			if beaconOs == "windows" {
+				outName += ".exe"
+			}
+
 			cmd := exec.Command(
 				"go", "build",
 				"-ldflags", ldflags,
 				"-trimpath",
+				"-o", outName,
 				tags,
 				mainPath,
 			)
@@ -188,7 +208,7 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 					"-ldflags", ldflags,
 					"-trimpath",
 					"-buildmode=c-shared",
-					"-o", fmt.Sprintf("main_%s.dll", beaconType),
+					"-o", fmt.Sprintf("main_%s_%s.dll", beaconType, arch),
 					tags,
 					mainPath,
 				)
@@ -197,12 +217,12 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			// Set environment variables like GOOS and GOARCH
 			cmd.Env = append(os.Environ(),
 				fmt.Sprintf("GOOS=%s", beaconOs),
-				"GOARCH=amd64",
+				fmt.Sprintf("GOARCH=%s", goarch),
 			)
 
 			if strings.HasSuffix(beaconType, "_dll") {
 				cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
-				cmd.Env = append(cmd.Env, "CC=x86_64-w64-mingw32-gcc")
+				cmd.Env = append(cmd.Env, fmt.Sprintf("CC=%s", cc))
 			}
 
 			cmd.Stdout = os.Stdout
@@ -215,7 +235,7 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 				fmt.Println("Build failed:", err)
 			}
 
-			beaconName := "main_"+beaconType
+			beaconName := fmt.Sprintf("main_%s_%s", beaconType, arch)
 			if beaconOs == "windows" {
 				if strings.HasSuffix(beaconType, "_dll") {
 					beaconName += ".dll"
@@ -298,6 +318,7 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			f.String("a", "amsi", Conf.DefaultAmsiBypass, "Amsi Bypass file")
 			f.String("t", "template", Conf.DefaultLoaderTemplate, "Loader File")
 			f.Bool("n", "no-console", false, "If specified, beacon will have no console")
+			f.String("r", "arch", "64", "Target architecture: 32 or 64")
 		},
 		Completer: func(prefix string, args []string) []string {
 			var suggestions []string
@@ -323,6 +344,15 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			amsiFile := c.Flags.String("amsi")
 			loaderTemplate := c.Flags.String("template")
 			console := !c.Flags.Bool("no-console")
+			arch := c.Flags.String("arch")
+			if arch != "32" && arch != "64" {
+				fmt.Println("arch must be 32 or 64")
+				return nil
+			}
+			goarch := "amd64"
+			if arch == "32" {
+				goarch = "386"
+			}
 			beaconType := c.Args.String("type")
 			beaconOs := "windows"
 			switch beaconType {
@@ -350,11 +380,13 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			}
 			mainPath := fmt.Sprintf("beacon/main_%s.go", beaconType)
 			tags := fmt.Sprintf("-tags=%s", beaconType)
+			beaconExeName := fmt.Sprintf("main_%s_%s.exe", beaconType, arch)
 
 			cmd := exec.Command(
 				"go", "build",
 				"-ldflags", ldflags,
 				"-trimpath",
+				"-o", beaconExeName,
 				tags,
 				mainPath,
 			)
@@ -362,7 +394,7 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 			// Set environment variables like GOOS and GOARCH
 			cmd.Env = append(os.Environ(),
 				fmt.Sprintf("GOOS=%s", beaconOs),
-				"GOARCH=amd64",
+				fmt.Sprintf("GOARCH=%s", goarch),
 			)
 
 			cmd.Stdout = os.Stdout
@@ -383,7 +415,7 @@ func SetGenerateBeaconCommand(conn grpc.ClientConnInterface) {
 				"-m", "RunMe",
 				"-x", "2",
 				"-o", Conf.BeaconShellCodePath,
-				"-i", "main_"+beaconType+".exe",
+				"-i", beaconExeName,
 			}
 			cmd = exec.Command(Conf.DonutPath, args...)
 		    _, err = cmd.Output()
