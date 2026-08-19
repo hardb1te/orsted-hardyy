@@ -72,8 +72,9 @@ For full details and setup instructions, check the **Orsted documentation**:
 
 ---
 
-## Tracking Changes
+## Tracking Changes & Development
 
 - **[CHANGELOG.md](CHANGELOG.md)** — Feature releases and updates
 - **[FEATURE_STANDARD.md](FEATURE_STANDARD.md)** — How to add and document new features
+- **[STAGER_WORKFLOW.md](STAGER_WORKFLOW.md)** — Practical stager deployment examples (VBA, shellcode, proxy)
 
