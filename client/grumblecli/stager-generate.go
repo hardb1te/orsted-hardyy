@@ -119,10 +119,13 @@ func SetGenerateStagerCommand(conn grpc.ClientConnInterface) {
 		},
 	}
 
-	for _, cmd := range app.Commands() {
-		if cmd.Name == "generate" {
-			cmd.AddCommand(generateStagerCmd)
-			return
+	commands := app.Commands()
+	if commands != nil {
+		for _, cmd := range *commands {
+			if cmd.Name == "generate" {
+				cmd.AddCommand(generateStagerCmd)
+				return
+			}
 		}
 	}
 
