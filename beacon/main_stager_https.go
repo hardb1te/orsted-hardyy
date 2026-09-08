@@ -72,7 +72,6 @@ func executeAgent(data []byte) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmpFile.Name())
 
 	_, err = tmpFile.Write(data)
 	if err != nil {
