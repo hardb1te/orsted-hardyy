@@ -119,14 +119,9 @@ func SetGenerateStagerCommand(conn grpc.ClientConnInterface) {
 		},
 	}
 
-	commands := app.Commands()
-	if commands != nil {
-		for _, cmd := range *commands {
-			if cmd.Name == "generate" {
-				cmd.AddCommand(generateStagerCmd)
-				return
-			}
-		}
+	if cmd := app.Commands().Get("generate"); cmd != nil {
+		cmd.AddCommand(generateStagerCmd)
+		return
 	}
 
 	generateCmd := &grumble.Command{
