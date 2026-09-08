@@ -111,6 +111,7 @@ func SetGenerateStagerCommand(conn grpc.ClientConnInterface) {
 			err := cmd.Run()
 			if err != nil {
 				fmt.Println("Build failed:", err)
+				return nil
 			}
 
 			fmt.Println(fmt.Sprintf("[+] Stager Generated at %s", outName))
