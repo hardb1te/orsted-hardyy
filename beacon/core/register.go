@@ -21,9 +21,6 @@ func RegisterBeacon(p utils.Peer) (string, error) {
         "transport": p.GetPeerType(),
 		"chain":     nil, // or (*[]string)(nil)
 	}
-	if utils.BeaconType != "" {
-		payload["beaconType"] = utils.BeaconType
-	}
 
 	jsonBytes, _ := json.Marshal(payload)
 
