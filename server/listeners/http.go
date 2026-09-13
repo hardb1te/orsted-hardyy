@@ -284,12 +284,16 @@ func DownloadAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	beaconFilename := fmt.Sprintf("beacons/main_http_%s.exe", arch)
-	beaconData, err := os.ReadFile(beaconFilename)
+	beaconName := fmt.Sprintf("main_http_%s.exe", arch)
+	beaconData, err := orsteddb.GetFileDataDb(beaconName)
 	if err != nil {
-		utils.PrintDebug("Error reading beacon file:", err.Error())
-		http.Error(w, "Agent not available", http.StatusNotFound)
-		return
+		utils.PrintDebug("Agent not in hosted files, trying filesystem:", err.Error())
+		beaconData, err = os.ReadFile(fmt.Sprintf("beacons/%s", beaconName))
+		if err != nil {
+			utils.PrintDebug("Error reading beacon file:", err.Error())
+			http.Error(w, "Agent not available", http.StatusNotFound)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
