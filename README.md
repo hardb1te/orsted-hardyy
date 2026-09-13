@@ -127,6 +127,8 @@ loader.exe shellcode.b64 base64       # base64 encoded
 loader.exe shellcode.hex hex          # hex encoded
 ```
 
+**Important: format must match between generation and loading.** `generate shellcode` defaults to base64, but `loader.exe` defaults to raw. Either generate as raw (`-f raw`) or tell the loader the format (`loader.exe file.b64 base64`). Mismatched formats will silently fail — the shellcode executes but the beacon won't call back.
+
 **How it works:** VirtualAlloc (RW) → RtlMoveMemory → VirtualProtect (RX) → CreateThread → WaitForSingleObject.
 
 ---
