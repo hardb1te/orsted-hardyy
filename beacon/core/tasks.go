@@ -306,6 +306,9 @@ func HandleTask(t utils.Task) ([]byte, error) {
 		var serviceDesc string
 		var binPath string
 		var hostname string
+		var username string
+		var password string
+		var domain string
 		var args []string
 
 		commandArgs, size := ParseCommandLineArgument(res[1])
@@ -322,7 +325,16 @@ func HandleTask(t utils.Task) ([]byte, error) {
 			hostname = commandArgs[3]
 		}
 		if size >= 5 {
-			args = commandArgs[4:]
+			username = commandArgs[4]
+		}
+		if size >= 6 {
+			password = commandArgs[5]
+		}
+		if size >= 7 {
+			domain = commandArgs[6]
+		}
+		if size >= 8 {
+			args = commandArgs[7:]
 		}
 
 		data := map[string]interface{}{
@@ -331,6 +343,9 @@ func HandleTask(t utils.Task) ([]byte, error) {
 			"servicedesc": serviceDesc,
 			"binpath":     binPath,
 			"hostname":    hostname,
+			"username":    username,
+			"password":    password,
+			"domain":      domain,
 			"filedata":    t.Reqdata,
 			"args":        args,
 		}

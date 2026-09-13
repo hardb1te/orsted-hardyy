@@ -6,6 +6,7 @@ package main
 import "C"
 
 import (
+	"encoding/base64"
 	"strings"
 )
 
@@ -15,6 +16,9 @@ type Task struct {
 	ServiceDesc string   `json:"servicedesc"`
 	BinPath     string   `json:"binpath"`
 	Hostname    string   `json:"hostname"`
+	Username    string   `json:"username"`
+	Password    string   `json:"password"`
+	Domain      string   `json:"domain"`
 	FileData    []byte   `json:"filedata"`
 	Args        []string `json:"args"`
 
@@ -32,7 +36,18 @@ func InitialiseTask(task *Task) error {
 }
 
 func TaskHandler(task *Task) (stdout []byte, err error) {
-	err = PsExec(task.Hostname, task.BinPath, task.FileData, strings.Join(task.Args, " "), task.ServiceName, task.ServiceDesc)
+	password := task.Password
+	if password != "" && password != "_" {
+		decoded, err := base64.StdEncoding.DecodeString(password)
+		if err != nil {
+			Println("Failed to decode password: ", err.Error())
+			task.status = "failed"
+			return []byte("Failed to decode password: " + err.Error()), err
+		}
+		password = string(decoded)
+	}
+
+	err = PsExec(task.Hostname, task.BinPath, task.FileData, strings.Join(task.Args, " "), task.ServiceName, task.ServiceDesc, task.Username, password, task.Domain)
 	if err != nil {
 		Println("Error Occured --> ", err.Error())
 		task.status = "failed"
@@ -42,7 +57,6 @@ func TaskHandler(task *Task) (stdout []byte, err error) {
 	return []byte("PsExec returned without errors"), err
 }
 
-// Tell us if task if done (failed or completed)
 func IsTaskDone(task Task) bool {
 	if task.status == "completed" || task.status == "failed" {
 		return true
@@ -50,12 +64,10 @@ func IsTaskDone(task Task) bool {
 	return false
 }
 
-// Return Task Status
 func ComputeTaskStatus(task Task) string {
 	return task.status
 }
 
-// Return Task Type
 func ComputeTaskType(task Task) string {
 	return task.tasktype
 }
