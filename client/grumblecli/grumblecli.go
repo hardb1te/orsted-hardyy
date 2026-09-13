@@ -44,6 +44,7 @@ func addSingleCommandFromString(commandString string, conn grpc.ClientConnInterf
 	case "generate":
 		SetGenerateBeaconCommand(conn)
 		SetGenerateStagerCommand(conn)
+		SetGenerateShellcodeCommand(conn)
 	case "listener":
 		SetListenerCommands(conn)
 	case "session":
